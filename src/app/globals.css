@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 * {
@@ -13,8 +13,8 @@ body {
 
 body {
   margin: 0;
-  background: #f5f6f8;
-  color: #1f2a37;
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 

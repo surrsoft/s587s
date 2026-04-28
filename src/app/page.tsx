@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
@@ -15,9 +16,12 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
+  useComputedColorScheme,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDatabase, IconRefresh, IconSend } from "@tabler/icons-react";
+import { IconDatabase, IconMoon, IconRefresh, IconSend, IconSun } from "@tabler/icons-react";
 
 type HealthResponse = {
   ok: boolean;
@@ -36,6 +40,10 @@ type AirtableRecord = {
 };
 
 export default function Home() {
+  const { setColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [records, setRecords] = useState<AirtableRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,6 +51,7 @@ export default function Home() {
   const [fieldValue, setFieldValue] = useState("");
 
   const isConfigured = health?.airtable.configured === true;
+  const isDark = computedColorScheme === "dark";
 
   const statusColor = useMemo(() => {
     if (!health) return "gray";
@@ -133,7 +142,7 @@ export default function Home() {
   }, [refresh]);
 
   return (
-    <Box component="main" py={{ base: 24, sm: 40 }}>
+    <Box component="main" bg="var(--mantine-color-body)" py={{ base: 24, sm: 40 }}>
       <Container size="lg">
         <Stack gap="lg">
           <Group justify="space-between" align="flex-start">
@@ -147,14 +156,27 @@ export default function Home() {
               </Text>
             </Stack>
 
-            <Button
-              leftSection={<IconRefresh size={18} />}
-              variant="light"
-              loading={loading}
-              onClick={refresh}
-            >
-              Обновить
-            </Button>
+            <Group gap="xs">
+              <Tooltip label={isDark ? "Светлая тема" : "Тёмная тема"}>
+                <ActionIcon
+                  aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+                  size="lg"
+                  variant="light"
+                  color={isDark ? "yellow" : "blue"}
+                  onClick={() => setColorScheme(isDark ? "light" : "dark")}
+                >
+                  {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
+                </ActionIcon>
+              </Tooltip>
+              <Button
+                leftSection={<IconRefresh size={18} />}
+                variant="light"
+                loading={loading}
+                onClick={refresh}
+              >
+                Обновить
+              </Button>
+            </Group>
           </Group>
 
           <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
