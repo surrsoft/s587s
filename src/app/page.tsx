@@ -1,65 +1,281 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Badge,
+  Box,
+  Button,
+  Code,
+  Container,
+  Divider,
+  Group,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconDatabase, IconRefresh, IconSend } from "@tabler/icons-react";
+
+type HealthResponse = {
+  ok: boolean;
+  airtable: {
+    configured: boolean;
+    baseId: boolean;
+    tableName: boolean;
+    apiKey: boolean;
+  };
+};
+
+type AirtableRecord = {
+  id: string;
+  fields: Record<string, unknown>;
+  createdTime?: string;
+};
 
 export default function Home() {
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [records, setRecords] = useState<AirtableRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fieldName, setFieldName] = useState("Name");
+  const [fieldValue, setFieldValue] = useState("");
+
+  const isConfigured = health?.airtable.configured === true;
+
+  const statusColor = useMemo(() => {
+    if (!health) return "gray";
+    return isConfigured ? "teal" : "yellow";
+  }, [health, isConfigured]);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const healthResponse = await fetch("/api/health", { cache: "no-store" });
+      const nextHealth = (await healthResponse.json()) as HealthResponse;
+      setHealth(nextHealth);
+
+      if (nextHealth.airtable.configured) {
+        const recordsResponse = await fetch("/api/airtable/records", {
+          cache: "no-store",
+        });
+        const payload = await recordsResponse.json();
+
+        if (!recordsResponse.ok) {
+          throw new Error(payload.error ?? "Не удалось прочитать Airtable");
+        }
+
+        setRecords(payload.records ?? []);
+      } else {
+        setRecords([]);
+      }
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Ошибка подключения",
+        message: error instanceof Error ? error.message : "Неизвестная ошибка",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  async function createRecord() {
+    if (!fieldName.trim() || !fieldValue.trim()) {
+      notifications.show({
+        color: "yellow",
+        title: "Заполните поле",
+        message: "Нужно указать название поля и значение.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/airtable/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: { [fieldName.trim()]: fieldValue.trim() } }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Не удалось создать запись");
+      }
+
+      setFieldValue("");
+      notifications.show({
+        color: "teal",
+        title: "Запись создана",
+        message: payload.record.id,
+      });
+      await refresh();
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Ошибка записи",
+        message: error instanceof Error ? error.message : "Неизвестная ошибка",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      refresh();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [refresh]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <Box component="main" py={{ base: 24, sm: 40 }}>
+      <Container size="lg">
+        <Stack gap="lg">
+          <Group justify="space-between" align="flex-start">
+            <Stack gap={6}>
+              <Group gap="sm">
+                <IconDatabase size={30} stroke={1.8} />
+                <Title order={1}>s587s</Title>
+              </Group>
+              <Text c="dimmed" maw={640}>
+                Тонкий клиент на Next.js и Mantine для чтения и записи данных в Airtable.
+              </Text>
+            </Stack>
+
+            <Button
+              leftSection={<IconRefresh size={18} />}
+              variant="light"
+              loading={loading}
+              onClick={refresh}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+              Обновить
+            </Button>
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+            <Paper withBorder radius="md" p="md">
+              <Stack gap="xs">
+                <Text fw={600}>Airtable</Text>
+                <Badge color={statusColor} variant="light" w="fit-content">
+                  {isConfigured ? "подключен" : "нужна настройка"}
+                </Badge>
+                <Text size="sm" c="dimmed">
+                  Используются только серверные env-переменные.
+                </Text>
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Stack gap="xs">
+                <Text fw={600}>API</Text>
+                <Code>/api/airtable/records</Code>
+                <Text size="sm" c="dimmed">
+                  GET читает записи, POST создает запись.
+                </Text>
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Stack gap="xs">
+                <Text fw={600}>Записи</Text>
+                <Title order={2}>{records.length}</Title>
+                <Text size="sm" c="dimmed">
+                  Показываем последние 25 записей из таблицы.
+                </Text>
+              </Stack>
+            </Paper>
+          </SimpleGrid>
+
+          {!isConfigured ? (
+            <Paper withBorder radius="md" p="lg">
+              <Stack gap="sm">
+                <Title order={2}>Настройка окружения</Title>
+                <Text c="dimmed">
+                  Создайте <Code>.env.local</Code> и заполните значения из{" "}
+                  <Code>.env.example</Code>.
+                </Text>
+                <Divider />
+                <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                  <Badge color={health?.airtable.apiKey ? "teal" : "gray"} variant="light">
+                    AIRTABLE_API_KEY
+                  </Badge>
+                  <Badge color={health?.airtable.baseId ? "teal" : "gray"} variant="light">
+                    AIRTABLE_BASE_ID
+                  </Badge>
+                  <Badge color={health?.airtable.tableName ? "teal" : "gray"} variant="light">
+                    AIRTABLE_TABLE_NAME
+                  </Badge>
+                </SimpleGrid>
+              </Stack>
+            </Paper>
+          ) : (
+            <Paper withBorder radius="md" p="lg">
+              <Stack gap="md">
+                <Group justify="space-between">
+                  <Title order={2}>Новая запись</Title>
+                  <Badge variant="light" color="teal">
+                    server write
+                  </Badge>
+                </Group>
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <TextInput
+                    label="Поле"
+                    value={fieldName}
+                    onChange={(event) => setFieldName(event.currentTarget.value)}
+                  />
+                  <TextInput
+                    label="Значение"
+                    value={fieldValue}
+                    onChange={(event) => setFieldValue(event.currentTarget.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") createRecord();
+                    }}
+                  />
+                </SimpleGrid>
+                <Group justify="flex-end">
+                  <Button
+                    leftSection={<IconSend size={18} />}
+                    loading={loading}
+                    onClick={createRecord}
+                  >
+                    Создать
+                  </Button>
+                </Group>
+              </Stack>
+            </Paper>
+          )}
+
+          <Paper withBorder radius="md" p="lg">
+            <Stack gap="md">
+              <Title order={2}>Последние записи</Title>
+              {records.length === 0 ? (
+                <Text c="dimmed">Записей пока нет или Airtable еще не настроен.</Text>
+              ) : (
+                <Stack gap="sm">
+                  {records.map((record) => (
+                    <Paper key={record.id} withBorder radius="sm" p="sm">
+                      <Group justify="space-between" align="flex-start">
+                        <Stack gap={4}>
+                          <Text fw={600}>{record.id}</Text>
+                          <Text size="sm" c="dimmed">
+                            {record.createdTime ?? "createdTime не передан"}
+                          </Text>
+                        </Stack>
+                        <Code>{JSON.stringify(record.fields)}</Code>
+                      </Group>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Paper>
+        </Stack>
+      </Container>
+    </Box>
   );
 }
