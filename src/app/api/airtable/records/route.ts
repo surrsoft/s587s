@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { FieldSet } from "airtable";
 import { z } from "zod";
-import { getAirtableConfigStatus, getAirtableTable } from "@/lib/airtable";
+import { getAirtableConfigStatus, getAirtableTable, getErrorMessage } from "@/lib/airtable";
 
 const createRecordSchema = z.object({
   fields: z.record(z.string().min(1), z.unknown()),
@@ -41,7 +41,7 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to read Airtable records." },
+      { error: getErrorMessage(error, "Failed to read Airtable records.") },
       { status: 500 },
     );
   }
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to create Airtable record.";
+    const message = getErrorMessage(error, "Failed to create Airtable record.");
 
     return NextResponse.json({ error: message }, { status: 400 });
   }

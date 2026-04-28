@@ -29,6 +29,9 @@ AIRTABLE_BASE_ID=
 AIRTABLE_TABLE_NAME=
 ```
 
+`AIRTABLE_BASE_ID` is the `app...` id of the base. If you paste a longer Airtable path,
+only the first `/` segment is used.
+
 The browser never receives the Airtable API key. Client code calls the local Next.js API routes:
 
 - `GET /api/health`

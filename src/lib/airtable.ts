@@ -33,8 +33,24 @@ export function getAirtableTable() {
     AIRTABLE_BASE_ID: process.env.AIRTABLE_BASE_ID,
     AIRTABLE_TABLE_NAME: process.env.AIRTABLE_TABLE_NAME,
   });
+  const baseId = env.AIRTABLE_BASE_ID.split("/")[0];
 
   return new Airtable({ apiKey: env.AIRTABLE_API_KEY })
-    .base(env.AIRTABLE_BASE_ID)
+    .base(baseId)
     .table(env.AIRTABLE_TABLE_NAME);
+}
+
+export function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return fallback;
 }
