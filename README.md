@@ -27,6 +27,7 @@ Set these values in `.env.local`:
 AIRTABLE_API_KEY=
 AIRTABLE_BASE_ID=
 AIRTABLE_TABLE_NAME=
+AIRTABLE_ACCOUNTS_TABLE_NAME=доход расход категории
 ```
 
 `AIRTABLE_BASE_ID` is the `app...` id of the base. If you paste a longer Airtable path,
@@ -37,3 +38,7 @@ The browser never receives the Airtable API key. Client code calls the local Nex
 - `GET /api/health`
 - `GET /api/airtable/records`
 - `POST /api/airtable/records`
+- `GET /api/airtable/accounts`
+- `POST /api/airtable/accounts`
+- `PATCH /api/airtable/accounts/:id`
+- `DELETE /api/airtable/accounts/:id`

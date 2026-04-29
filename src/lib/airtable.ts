@@ -7,10 +7,14 @@ const airtableEnvSchema = z.object({
   AIRTABLE_TABLE_NAME: z.string().min(1),
 });
 
+const defaultAccountsTableName = "доход расход категории";
+export const accountsNameField = "name";
+
 export type AirtableConfigStatus = {
   configured: boolean;
   baseId: boolean;
   tableName: boolean;
+  accountsTableName: boolean;
   apiKey: boolean;
 };
 
@@ -24,10 +28,11 @@ export function getAirtableConfigStatus(): AirtableConfigStatus {
     apiKey: Boolean(process.env.AIRTABLE_API_KEY),
     baseId: Boolean(process.env.AIRTABLE_BASE_ID),
     tableName: Boolean(process.env.AIRTABLE_TABLE_NAME),
+    accountsTableName: Boolean(process.env.AIRTABLE_ACCOUNTS_TABLE_NAME ?? defaultAccountsTableName),
   };
 }
 
-export function getAirtableTable() {
+function getAirtableBase() {
   const env = airtableEnvSchema.parse({
     AIRTABLE_API_KEY: process.env.AIRTABLE_API_KEY,
     AIRTABLE_BASE_ID: process.env.AIRTABLE_BASE_ID,
@@ -35,9 +40,22 @@ export function getAirtableTable() {
   });
   const baseId = env.AIRTABLE_BASE_ID.split("/")[0];
 
-  return new Airtable({ apiKey: env.AIRTABLE_API_KEY })
-    .base(baseId)
-    .table(env.AIRTABLE_TABLE_NAME);
+  return {
+    base: new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(baseId),
+    tableName: env.AIRTABLE_TABLE_NAME,
+  };
+}
+
+export function getAirtableTable() {
+  const { base, tableName } = getAirtableBase();
+
+  return base.table(tableName);
+}
+
+export function getAccountsTable() {
+  const { base } = getAirtableBase();
+
+  return base.table(process.env.AIRTABLE_ACCOUNTS_TABLE_NAME ?? defaultAccountsTableName);
 }
 
 export function getErrorMessage(error: unknown, fallback: string) {
