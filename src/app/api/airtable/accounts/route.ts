@@ -46,10 +46,9 @@ export async function GET() {
     const records = await table
       .select({
         fields: [accountsNameField],
-        maxRecords: 100,
         sort: [{ field: accountsNameField, direction: "asc" }],
       })
-      .firstPage();
+      .all();
 
     return NextResponse.json({
       accounts: records.map(serializeAccount),

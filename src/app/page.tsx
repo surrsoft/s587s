@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -12,6 +12,7 @@ import {
   Divider,
   Group,
   Paper,
+  Select,
   SimpleGrid,
   Stack,
   Text,
@@ -42,18 +43,81 @@ type HealthResponse = {
   };
 };
 
+type AccountRecord = {
+  id: string;
+  name: string;
+  createdTime?: string;
+};
+
+const debitAccountField = "счёт списания линк";
+const creditAccountField = "счёт назначения линк";
+const recentDebitAccountsKey = "s587s.recentDebitAccounts";
+const recentCreditAccountsKey = "s587s.recentCreditAccounts";
+
+function readRecentAccounts(key: string) {
+  try {
+    const value = window.localStorage.getItem(key);
+    if (!value) return [];
+    const parsed = JSON.parse(value) as AccountRecord[];
+
+    return parsed.filter((account) => account.id && account.name).slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
+function nextRecentAccounts(accounts: AccountRecord[], selectedAccount: AccountRecord) {
+  return [
+    selectedAccount,
+    ...accounts.filter((account) => account.id !== selectedAccount.id),
+  ].slice(0, 3);
+}
+
 export default function Home() {
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: true,
   });
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [accountsLoading, setAccountsLoading] = useState(false);
   const [fieldName, setFieldName] = useState("Name");
   const [fieldValue, setFieldValue] = useState("");
+  const [debitAccountId, setDebitAccountId] = useState<string | null>(null);
+  const [creditAccountId, setCreditAccountId] = useState<string | null>(null);
+  const [recentDebitAccounts, setRecentDebitAccounts] = useState<AccountRecord[]>([]);
+  const [recentCreditAccounts, setRecentCreditAccounts] = useState<AccountRecord[]>([]);
 
   const isConfigured = health?.airtable.configured === true;
   const isDark = computedColorScheme === "dark";
+  const accountOptions = useMemo(
+    () => accounts.map((account) => ({ value: account.id, label: account.name })),
+    [accounts],
+  );
+
+  const refreshAccounts = useCallback(async () => {
+    setAccountsLoading(true);
+
+    try {
+      const response = await fetch("/api/airtable/accounts", { cache: "no-store" });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Не удалось прочитать счета");
+      }
+
+      setAccounts(payload.accounts ?? []);
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Ошибка списка счетов",
+        message: error instanceof Error ? error.message : "Неизвестная ошибка",
+      });
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -62,6 +126,12 @@ export default function Home() {
       const healthResponse = await fetch("/api/health", { cache: "no-store" });
       const nextHealth = (await healthResponse.json()) as HealthResponse;
       setHealth(nextHealth);
+
+      if (nextHealth.airtable.configured) {
+        await refreshAccounts();
+      } else {
+        setAccounts([]);
+      }
     } catch (error) {
       notifications.show({
         color: "red",
@@ -71,7 +141,33 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshAccounts]);
+
+  function selectDebitAccount(accountId: string | null) {
+    setDebitAccountId(accountId);
+
+    const account = accounts.find((item) => item.id === accountId);
+    if (!account) return;
+
+    setRecentDebitAccounts((currentAccounts) => {
+      const nextAccounts = nextRecentAccounts(currentAccounts, account);
+      window.localStorage.setItem(recentDebitAccountsKey, JSON.stringify(nextAccounts));
+      return nextAccounts;
+    });
+  }
+
+  function selectCreditAccount(accountId: string | null) {
+    setCreditAccountId(accountId);
+
+    const account = accounts.find((item) => item.id === accountId);
+    if (!account) return;
+
+    setRecentCreditAccounts((currentAccounts) => {
+      const nextAccounts = nextRecentAccounts(currentAccounts, account);
+      window.localStorage.setItem(recentCreditAccountsKey, JSON.stringify(nextAccounts));
+      return nextAccounts;
+    });
+  }
 
   async function createRecord() {
     if (!fieldName.trim() || !fieldValue.trim()) {
@@ -86,10 +182,17 @@ export default function Home() {
     setLoading(true);
 
     try {
+      const fields: Record<string, unknown> = {
+        [fieldName.trim()]: fieldValue.trim(),
+      };
+
+      if (debitAccountId) fields[debitAccountField] = [debitAccountId];
+      if (creditAccountId) fields[creditAccountField] = [creditAccountId];
+
       const response = await fetch("/api/airtable/records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fields: { [fieldName.trim()]: fieldValue.trim() } }),
+        body: JSON.stringify({ fields }),
       });
       const payload = await response.json();
 
@@ -117,6 +220,8 @@ export default function Home() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      setRecentDebitAccounts(readRecentAccounts(recentDebitAccountsKey));
+      setRecentCreditAccounts(readRecentAccounts(recentCreditAccountsKey));
       refresh();
     }, 0);
 
@@ -192,6 +297,58 @@ export default function Home() {
                     server write
                   </Badge>
                 </Group>
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <Stack gap="xs">
+                    <Select
+                      clearable
+                      searchable
+                      data={accountOptions}
+                      label="Счёт списания"
+                      nothingFoundMessage="Ничего не найдено"
+                      placeholder="Начните вводить название"
+                      value={debitAccountId}
+                      onChange={selectDebitAccount}
+                      disabled={accountsLoading}
+                    />
+                    <Group gap="xs">
+                      {recentDebitAccounts.map((account) => (
+                        <Button
+                          key={account.id}
+                          size="compact-sm"
+                          variant={debitAccountId === account.id ? "light" : "subtle"}
+                          onClick={() => selectDebitAccount(account.id)}
+                        >
+                          {account.name}
+                        </Button>
+                      ))}
+                    </Group>
+                  </Stack>
+                  <Stack gap="xs">
+                    <Select
+                      clearable
+                      searchable
+                      data={accountOptions}
+                      label="Счёт зачисления"
+                      nothingFoundMessage="Ничего не найдено"
+                      placeholder="Начните вводить название"
+                      value={creditAccountId}
+                      onChange={selectCreditAccount}
+                      disabled={accountsLoading}
+                    />
+                    <Group gap="xs">
+                      {recentCreditAccounts.map((account) => (
+                        <Button
+                          key={account.id}
+                          size="compact-sm"
+                          variant={creditAccountId === account.id ? "light" : "subtle"}
+                          onClick={() => selectCreditAccount(account.id)}
+                        >
+                          {account.name}
+                        </Button>
+                      ))}
+                    </Group>
+                  </Stack>
+                </SimpleGrid>
                 <SimpleGrid cols={{ base: 1, sm: 2 }}>
                   <TextInput
                     label="Поле"
