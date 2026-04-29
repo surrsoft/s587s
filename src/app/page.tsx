@@ -16,7 +16,6 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
   Title,
   Tooltip,
   useComputedColorScheme,
@@ -82,8 +81,6 @@ export default function Home() {
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
-  const [fieldName, setFieldName] = useState("Name");
-  const [fieldValue, setFieldValue] = useState("");
   const [debitAccountId, setDebitAccountId] = useState<string | null>(null);
   const [creditAccountId, setCreditAccountId] = useState<string | null>(null);
   const [recentDebitAccounts, setRecentDebitAccounts] = useState<AccountRecord[]>([]);
@@ -170,11 +167,11 @@ export default function Home() {
   }
 
   async function createRecord() {
-    if (!fieldName.trim() || !fieldValue.trim()) {
+    if (!debitAccountId && !creditAccountId) {
       notifications.show({
         color: "yellow",
-        title: "Заполните поле",
-        message: "Нужно указать название поля и значение.",
+        title: "Выберите счёт",
+        message: "Нужно выбрать счёт списания или счёт зачисления.",
       });
       return;
     }
@@ -182,9 +179,7 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const fields: Record<string, unknown> = {
-        [fieldName.trim()]: fieldValue.trim(),
-      };
+      const fields: Record<string, unknown> = {};
 
       if (debitAccountId) fields[debitAccountField] = [debitAccountId];
       if (creditAccountId) fields[creditAccountField] = [creditAccountId];
@@ -200,7 +195,6 @@ export default function Home() {
         throw new Error(payload.error ?? "Не удалось создать запись");
       }
 
-      setFieldValue("");
       notifications.show({
         color: "teal",
         title: "Запись создана",
@@ -348,21 +342,6 @@ export default function Home() {
                       ))}
                     </Group>
                   </Stack>
-                </SimpleGrid>
-                <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                  <TextInput
-                    label="Поле"
-                    value={fieldName}
-                    onChange={(event) => setFieldName(event.currentTarget.value)}
-                  />
-                  <TextInput
-                    label="Значение"
-                    value={fieldValue}
-                    onChange={(event) => setFieldValue(event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") createRecord();
-                    }}
-                  />
                 </SimpleGrid>
                 <Group justify="flex-end">
                   <Button
