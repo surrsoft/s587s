@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -25,6 +25,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconDatabase,
   IconExternalLink,
+  IconLayoutDashboard,
   IconMoon,
   IconRefresh,
   IconSend,
@@ -41,30 +42,18 @@ type HealthResponse = {
   };
 };
 
-type AirtableRecord = {
-  id: string;
-  fields: Record<string, unknown>;
-  createdTime?: string;
-};
-
 export default function Home() {
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: true,
   });
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [records, setRecords] = useState<AirtableRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [fieldName, setFieldName] = useState("Name");
   const [fieldValue, setFieldValue] = useState("");
 
   const isConfigured = health?.airtable.configured === true;
   const isDark = computedColorScheme === "dark";
-
-  const statusColor = useMemo(() => {
-    if (!health) return "gray";
-    return isConfigured ? "teal" : "yellow";
-  }, [health, isConfigured]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -73,21 +62,6 @@ export default function Home() {
       const healthResponse = await fetch("/api/health", { cache: "no-store" });
       const nextHealth = (await healthResponse.json()) as HealthResponse;
       setHealth(nextHealth);
-
-      if (nextHealth.airtable.configured) {
-        const recordsResponse = await fetch("/api/airtable/records", {
-          cache: "no-store",
-        });
-        const payload = await recordsResponse.json();
-
-        if (!recordsResponse.ok) {
-          throw new Error(payload.error ?? "Не удалось прочитать Airtable");
-        }
-
-        setRecords(payload.records ?? []);
-      } else {
-        setRecords([]);
-      }
     } catch (error) {
       notifications.show({
         color: "red",
@@ -190,22 +164,18 @@ export default function Home() {
           <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
             <Paper withBorder radius="md" p="md">
               <Stack gap="xs">
-                <Text fw={600}>Airtable</Text>
-                <Badge color={statusColor} variant="light" w="fit-content">
-                  {isConfigured ? "подключен" : "нужна настройка"}
-                </Badge>
+                <Text fw={600}>Дашборд</Text>
+                <Button
+                  component={Link}
+                  href="/dashboard"
+                  leftSection={<IconLayoutDashboard size={18} />}
+                  variant="light"
+                  w="fit-content"
+                >
+                  Открыть
+                </Button>
                 <Text size="sm" c="dimmed">
-                  Используются только серверные env-переменные.
-                </Text>
-              </Stack>
-            </Paper>
-
-            <Paper withBorder radius="md" p="md">
-              <Stack gap="xs">
-                <Text fw={600}>API</Text>
-                <Code>/api/airtable/records</Code>
-                <Text size="sm" c="dimmed">
-                  GET читает записи, POST создает запись.
+                  Статус Airtable, API и последние записи.
                 </Text>
               </Stack>
             </Paper>
@@ -224,6 +194,18 @@ export default function Home() {
                 </Button>
                 <Text size="sm" c="dimmed">
                   CRUD по полю name в таблице категорий.
+                </Text>
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Stack gap="xs">
+                <Text fw={600}>Записи</Text>
+                <Badge color={isConfigured ? "teal" : "yellow"} variant="light" w="fit-content">
+                  {isConfigured ? "готово к записи" : "нужна настройка"}
+                </Badge>
+                <Text size="sm" c="dimmed">
+                  Создание записей остаётся на главной.
                 </Text>
               </Stack>
             </Paper>
@@ -288,30 +270,6 @@ export default function Home() {
             </Paper>
           )}
 
-          <Paper withBorder radius="md" p="lg">
-            <Stack gap="md">
-              <Title order={2}>Последние записи</Title>
-              {records.length === 0 ? (
-                <Text c="dimmed">Записей пока нет или Airtable еще не настроен.</Text>
-              ) : (
-                <Stack gap="sm">
-                  {records.map((record) => (
-                    <Paper key={record.id} withBorder radius="sm" p="sm">
-                      <Group justify="space-between" align="flex-start">
-                        <Stack gap={4}>
-                          <Text fw={600}>{record.id}</Text>
-                          <Text size="sm" c="dimmed">
-                            {record.createdTime ?? "createdTime не передан"}
-                          </Text>
-                        </Stack>
-                        <Code>{JSON.stringify(record.fields)}</Code>
-                      </Group>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-          </Paper>
         </Stack>
       </Container>
     </Box>
