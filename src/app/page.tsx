@@ -161,45 +161,6 @@ export default function Home() {
             </Group>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-            <Paper withBorder radius="md" p="md">
-              <Stack gap="xs">
-                <Text fw={600}>Дашборд</Text>
-                <Button
-                  component={Link}
-                  href="/dashboard"
-                  leftSection={<IconLayoutDashboard size={18} />}
-                  variant="light"
-                  w="fit-content"
-                >
-                  Открыть
-                </Button>
-                <Text size="sm" c="dimmed">
-                  Статус Airtable, API и последние записи.
-                </Text>
-              </Stack>
-            </Paper>
-
-            <Paper withBorder radius="md" p="md">
-              <Stack gap="xs">
-                <Text fw={600}>Счета</Text>
-                <Button
-                  component={Link}
-                  href="/accounts"
-                  leftSection={<IconExternalLink size={18} />}
-                  variant="light"
-                  w="fit-content"
-                >
-                  Открыть
-                </Button>
-                <Text size="sm" c="dimmed">
-                  CRUD по полю name в таблице категорий.
-                </Text>
-              </Stack>
-            </Paper>
-
-          </SimpleGrid>
-
           {!isConfigured ? (
             <Paper withBorder radius="md" p="lg">
               <Stack gap="sm">
@@ -258,6 +219,44 @@ export default function Home() {
               </Stack>
             </Paper>
           )}
+
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+            <Paper withBorder radius="md" p="md">
+              <Stack gap="xs">
+                <Text fw={600}>Счета</Text>
+                <Button
+                  component={Link}
+                  href="/accounts"
+                  leftSection={<IconExternalLink size={18} />}
+                  variant="light"
+                  w="fit-content"
+                >
+                  Открыть
+                </Button>
+                <Text size="sm" c="dimmed">
+                  CRUD по полю name в таблице категорий.
+                </Text>
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Stack gap="xs">
+                <Text fw={600}>Дашборд</Text>
+                <Button
+                  component={Link}
+                  href="/dashboard"
+                  leftSection={<IconLayoutDashboard size={18} />}
+                  variant="light"
+                  w="fit-content"
+                >
+                  Открыть
+                </Button>
+                <Text size="sm" c="dimmed">
+                  Статус Airtable, API и последние записи.
+                </Text>
+              </Stack>
+            </Paper>
+          </SimpleGrid>
 
         </Stack>
       </Container>
