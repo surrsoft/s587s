@@ -161,7 +161,7 @@ export default function Home() {
             </Group>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
             <Paper withBorder radius="md" p="md">
               <Stack gap="xs">
                 <Text fw={600}>Дашборд</Text>
@@ -198,17 +198,6 @@ export default function Home() {
               </Stack>
             </Paper>
 
-            <Paper withBorder radius="md" p="md">
-              <Stack gap="xs">
-                <Text fw={600}>Записи</Text>
-                <Badge color={isConfigured ? "teal" : "yellow"} variant="light" w="fit-content">
-                  {isConfigured ? "готово к записи" : "нужна настройка"}
-                </Badge>
-                <Text size="sm" c="dimmed">
-                  Создание записей остаётся на главной.
-                </Text>
-              </Stack>
-            </Paper>
           </SimpleGrid>
 
           {!isConfigured ? (
