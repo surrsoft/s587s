@@ -11,11 +11,14 @@ import {
   Container,
   Divider,
   Group,
+  NumberInput,
   Paper,
   Select,
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
+  TextInput,
   Title,
   Tooltip,
   useComputedColorScheme,
@@ -48,8 +51,12 @@ type AccountRecord = {
   createdTime?: string;
 };
 
-const debitAccountField = "счёт списания линк";
-const creditAccountField = "счёт назначения линк";
+const debitAccountField = "счёт списания линк"; // !!s587s-trs-field!!
+const creditAccountField = "счёт назначения линк"; // !!s587s-trn-field!!
+const dateField = "дата"; // !!s587s-trd-field!!
+const debitSumField = "сумма списания"; // !!s587s-trssum-field!!
+const creditSumField = "сумма назначения"; // !!s587s-trzsum-field!! (not "сумма зачисления")
+const commentField = "комментарий"; // !!s587s-trcom-field!!
 const recentDebitAccountsKey = "s587s.recentDebitAccounts";
 const recentCreditAccountsKey = "s587s.recentCreditAccounts";
 
@@ -85,9 +92,27 @@ export default function Home() {
   const [creditAccountId, setCreditAccountId] = useState<string | null>(null);
   const [recentDebitAccounts, setRecentDebitAccounts] = useState<AccountRecord[]>([]);
   const [recentCreditAccounts, setRecentCreditAccounts] = useState<AccountRecord[]>([]);
+  const [recordDate, setRecordDate] = useState<string>("");
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  // Set default date only on client to avoid hydration mismatch
+  useEffect(() => {
+    if (isClient && !recordDate) {
+      setRecordDate(new Date().toISOString().split("T")[0]);
+    }
+  }, [isClient]);
+  
+  const [debitSum, setDebitSum] = useState<string | number>("");
+  const [creditSum, setCreditSum] = useState<string | number>("");
+  const [comment, setComment] = useState("");
 
   const isConfigured = health?.airtable.configured === true;
   const isDark = computedColorScheme === "dark";
+
   const accountOptions = useMemo(
     () => accounts.map((account) => ({ value: account.id, label: account.name })),
     [accounts],
@@ -183,6 +208,10 @@ export default function Home() {
 
       if (debitAccountId) fields[debitAccountField] = [debitAccountId];
       if (creditAccountId) fields[creditAccountField] = [creditAccountId];
+      if (recordDate) fields[dateField] = recordDate;
+      if (debitSum !== "") fields[debitSumField] = Number(debitSum);
+      if (creditSum !== "") fields[creditSumField] = Number(creditSum);
+      if (comment) fields[commentField] = comment;
 
       const response = await fetch("/api/airtable/records", {
         method: "POST",
@@ -223,7 +252,7 @@ export default function Home() {
   }, [refresh]);
 
   return (
-    <Box component="main" bg="var(--mantine-color-body)" py={{ base: 24, sm: 40 }}>
+    <Box component="main" bg="var(--mantine-color-body)" py={{ base: 24, sm: 40 }} suppressHydrationWarning>
       <Container size="lg">
         <Stack gap="lg">
           <Group justify="space-between" align="flex-start">
@@ -237,18 +266,22 @@ export default function Home() {
               </Text>
             </Stack>
 
-            <Group gap="xs">
-              <Tooltip label={isDark ? "Светлая тема" : "Тёмная тема"}>
-                <ActionIcon
-                  aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
-                  size="lg"
-                  variant="light"
-                  color={isDark ? "yellow" : "blue"}
-                  onClick={() => setColorScheme(isDark ? "light" : "dark")}
-                >
-                  {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
-                </ActionIcon>
-              </Tooltip>
+              <Group gap="xs" suppressHydrationWarning>
+                {isClient ? (
+                  <Tooltip label={isDark ? "Светлая тема" : "Тёмная тема"}>
+                    <ActionIcon
+                      aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+                      size="lg"
+                      variant="light"
+                      color={isDark ? "yellow" : "blue"}
+                      onClick={() => setColorScheme(isDark ? "light" : "dark")}
+                    >
+                      {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
+                    </ActionIcon>
+                  </Tooltip>
+                ) : (
+                  <div style={{ width: 42, height: 42 }} />
+                )}
               <Button
                 leftSection={<IconRefresh size={18} />}
                 variant="light"
@@ -343,6 +376,42 @@ export default function Home() {
                     </Group>
                   </Stack>
                 </SimpleGrid>
+                <Stack gap="md">
+                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                    <TextInput
+                      label="Дата"
+                      placeholder="Выберите дату"
+                      type="date"
+                      value={recordDate}
+                      onChange={(e) => setRecordDate(e.currentTarget.value)}
+                    />
+                    <Box />
+                  </SimpleGrid>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                    <NumberInput
+                      label="Сумма списания"
+                      placeholder="0"
+                      value={debitSum}
+                      onChange={setDebitSum}
+                      min={0}
+                      step={0.01}
+                    />
+                    <NumberInput
+                      label="Сумма зачисления"
+                      placeholder="0"
+                      value={creditSum}
+                      onChange={setCreditSum}
+                      min={0}
+                      step={0.01}
+                    />
+                  </SimpleGrid>
+                  <Textarea
+                    label="Комментарий"
+                    placeholder="Введите комментарий"
+                    value={comment}
+                    onChange={(e) => setComment(e.currentTarget.value)}
+                  />
+                </Stack>
                 <Group justify="flex-end">
                   <Button
                     leftSection={<IconSend size={18} />}
